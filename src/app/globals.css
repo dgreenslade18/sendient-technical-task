@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 250 250 250;
+    --foreground: 17 24 39;
+
+    --muted: 243 244 246;
+    --muted-foreground: 107 114 128;
+
+    --primary: 37 99 235;
+    --primary-foreground: 248 250 252;
+
+    --success: 22 163 74;
+    --success-foreground: 240 253 244;
+
+    --warning: 202 138 4;
+    --warning-foreground: 254 252 232;
+
+    --error: 220 38 38;
+    --error-foreground: 254 242 242;
+
+    --border: 229 231 235;
+  }
+
+  .dark {
+    --background: 17 24 39;
+    --foreground: 243 244 246;
+
+    --muted: 31 41 55;
+    --muted-foreground: 156 163 175;
+
+    --primary: 96 165 250;
+    --primary-foreground: 17 24 39;
+
+    --success: 74 222 128;
+    --success-foreground: 17 24 39;
+
+    --warning: 250 204 21;
+    --warning-foreground: 17 24 39;
+
+    --error: 248 113 113;
+    --error-foreground: 17 24 39;
+
+    --border: 55 65 81;
+  }
+
+  html,
+  body {
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+  }
+}

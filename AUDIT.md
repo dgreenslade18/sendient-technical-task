@@ -1,0 +1,19 @@
+# Audit Notes
+
+_Fill this in as you go. See the README for what we're looking for._
+
+## What I found
+
+_(List the issues you noticed in the starter codebase. Bullet points are fine.)_
+
+## What I fixed and why
+
+_(For each fix: where it was, what was wrong, and why this one was worth fixing first.)_
+
+## What I deferred and why
+
+_(Anything you spotted but chose not to fix — and what would push it up the priority list.)_
+
+## What I'd argue is the biggest problem with the codebase
+
+_(One paragraph. Pick the one that matters most.)_

@@ -1,0 +1,22 @@
+node_modules
+.next
+out
+dist
+*.log
+.DS_Store
+
+# Local SQLite database (regenerable via pnpm db:reset)
+data.db
+data.db-journal
+
+# Env
+.env
+.env.local
+
+# Build artefacts
+.turbo
+next-env.d.ts
+
+# Hiring-side answer key and rubric — never commit to the candidate repo.
+_hiring/
+

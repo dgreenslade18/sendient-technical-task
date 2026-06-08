@@ -1,0 +1,9 @@
+# Normalise line endings on checkout so Windows candidates don't accidentally
+# commit CRLF on text files.
+* text=auto eol=lf
+
+# Treat the migration as text (LF) regardless of autocrlf.
+*.sql text eol=lf
+
+# data.db is binary if it ever gets committed by mistake.
+*.db binary
