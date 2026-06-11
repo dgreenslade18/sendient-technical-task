@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   cohortAverage,
+  computeCoverage,
   computeInsights,
   scoreDistribution,
   studentsNeedingAttention,
@@ -9,7 +10,7 @@ import {
   type InsightRecord,
 } from "@/lib/insights";
 
-function record(overrides: Partial<InsightRecord>): InsightRecord {
+function makeRecord(overrides: Partial<InsightRecord>): InsightRecord {
   return {
     studentId: 1,
     studentName: "Student 1",
@@ -21,12 +22,11 @@ function record(overrides: Partial<InsightRecord>): InsightRecord {
   };
 }
 
-/** Build n records for a student/topic pair with a fixed score. */
-function records(
+function makeRecords(
   count: number,
   overrides: Partial<InsightRecord>,
 ): InsightRecord[] {
-  return Array.from({ length: count }, () => record(overrides));
+  return Array.from({ length: count }, () => makeRecord(overrides));
 }
 
 describe("cohortAverage", () => {
@@ -35,21 +35,27 @@ describe("cohortAverage", () => {
   });
 
   it("weights each student equally, not each record", () => {
-    // Student 1: prolific, average 90. Student 2: single record, score 30.
-    // Record-weighted would be ~85; student-weighted is 60.
     const rows = [
-      ...records(10, { studentId: 1, studentName: "A", score: 90 }),
-      record({ studentId: 2, studentName: "B", score: 30 }),
+      ...makeRecords(10, { studentId: 1, studentName: "A", score: 90 }),
+      ...makeRecords(3, { studentId: 2, studentName: "B", score: 30 }),
     ];
     expect(cohortAverage(rows)).toBe(60);
+  });
+
+  it("excludes students below the eligibility threshold", () => {
+    const rows = [
+      ...makeRecords(3, { studentId: 1, studentName: "Eligible", score: 80 }),
+      makeRecord({ studentId: 2, studentName: "OneOff", score: 20 }),
+    ];
+    expect(cohortAverage(rows, 3)).toBe(80);
   });
 });
 
 describe("topicAverages", () => {
   it("excludes topics below the minimum record count", () => {
     const rows = [
-      ...records(5, { topicId: 1, topicName: "Algebra", score: 80 }),
-      ...records(2, { topicId: 2, topicName: "Geometry", score: 95 }),
+      ...makeRecords(5, { topicId: 1, topicName: "Algebra", score: 80 }),
+      ...makeRecords(2, { topicId: 2, topicName: "Geometry", score: 95 }),
     ];
     const result = topicAverages(rows, 5);
     expect(result).toHaveLength(1);
@@ -58,8 +64,8 @@ describe("topicAverages", () => {
 
   it("sorts strongest topic first", () => {
     const rows = [
-      ...records(5, { topicId: 1, topicName: "Algebra", score: 40 }),
-      ...records(5, { topicId: 2, topicName: "Geometry", score: 80 }),
+      ...makeRecords(5, { topicId: 1, topicName: "Algebra", score: 40 }),
+      ...makeRecords(5, { topicId: 2, topicName: "Geometry", score: 80 }),
     ];
     const result = topicAverages(rows, 5);
     expect(result.map((t) => t.topicName)).toEqual(["Geometry", "Algebra"]);
@@ -69,9 +75,9 @@ describe("topicAverages", () => {
 describe("subjectAverages", () => {
   it("averages records per subject, sorted alphabetically", () => {
     const rows = [
-      record({ topicId: 1, topicSubject: "Science", score: 80 }),
-      record({ topicId: 2, topicSubject: "Maths", score: 40 }),
-      record({ topicId: 3, topicSubject: "Maths", score: 60 }),
+      makeRecord({ topicId: 1, topicSubject: "Science", score: 80 }),
+      makeRecord({ topicId: 2, topicSubject: "Maths", score: 40 }),
+      makeRecord({ topicId: 3, topicSubject: "Maths", score: 60 }),
     ];
     const result = subjectAverages(rows);
     expect(result).toEqual([
@@ -86,12 +92,12 @@ describe("subjectAverages", () => {
 });
 
 describe("scoreDistribution", () => {
-  it("buckets each student once by their average, respecting band boundaries", () => {
+  it("buckets each eligible student once, respecting band boundaries", () => {
     const rows = [
-      record({ studentId: 1, score: 49 }), // low
-      record({ studentId: 2, score: 50 }), // mid
-      record({ studentId: 3, score: 69 }), // mid
-      record({ studentId: 4, score: 70 }), // high
+      ...makeRecords(3, { studentId: 1, score: 49 }),
+      ...makeRecords(3, { studentId: 2, score: 50 }),
+      ...makeRecords(3, { studentId: 3, score: 69 }),
+      ...makeRecords(3, { studentId: 4, score: 70 }),
     ];
     expect(scoreDistribution(rows)).toEqual({
       low: 1,
@@ -99,6 +105,20 @@ describe("scoreDistribution", () => {
       high: 1,
       total: 4,
     });
+  });
+
+  it("excludes ineligible students so it reconciles with the attention list", () => {
+    const rows = [
+      ...makeRecords(3, { studentId: 1, studentName: "Eligible", score: 30 }),
+      makeRecord({ studentId: 2, studentName: "OneOff", score: 30 }),
+    ];
+    expect(scoreDistribution(rows, 3)).toEqual({
+      low: 1,
+      mid: 0,
+      high: 0,
+      total: 1,
+    });
+    expect(studentsNeedingAttention(rows, 3)).toHaveLength(1);
   });
 
   it("is empty for no records", () => {
@@ -113,25 +133,60 @@ describe("scoreDistribution", () => {
 
 describe("studentsNeedingAttention", () => {
   it("flags low-average students with enough records", () => {
-    const rows = records(3, { studentId: 1, studentName: "Low", score: 30 });
+    const rows = makeRecords(3, { studentId: 1, studentName: "Low", score: 30 });
     const result = studentsNeedingAttention(rows, 3);
     expect(result.map((s) => s.studentName)).toEqual(["Low"]);
   });
 
   it("does not flag a low average backed by too few records", () => {
-    const rows = records(2, { studentId: 1, studentName: "Low", score: 30 });
+    const rows = makeRecords(2, { studentId: 1, studentName: "Low", score: 30 });
     expect(studentsNeedingAttention(rows, 3)).toHaveLength(0);
   });
 
   it("does not flag students averaging 50 or above", () => {
-    const rows = records(5, { studentId: 1, studentName: "Mid", score: 55 });
+    const rows = makeRecords(5, { studentId: 1, studentName: "Mid", score: 55 });
     expect(studentsNeedingAttention(rows, 3)).toHaveLength(0);
+  });
+});
+
+describe("computeCoverage", () => {
+  it("surfaces never-assessed and insufficiently-assessed students separately", () => {
+    const roster = [
+      { id: 1, name: "Scored" },
+      { id: 2, name: "Thin" },
+      { id: 3, name: "Unassessed" },
+    ];
+    const rows = [
+      ...makeRecords(3, { studentId: 1, studentName: "Scored", score: 80 }),
+      makeRecord({ studentId: 2, studentName: "Thin", score: 40 }),
+    ];
+    const coverage = computeCoverage(rows, roster, 3);
+    expect(coverage).toEqual({
+      totalStudents: 3,
+      assessedStudents: 2,
+      eligibleStudents: 1,
+      insufficientStudents: [
+        { studentId: 2, studentName: "Thin", recordCount: 1 },
+      ],
+      noRecordStudents: [
+        { studentId: 3, studentName: "Unassessed", recordCount: 0 },
+      ],
+    });
+  });
+
+  it("reports full coverage when every student is eligible", () => {
+    const roster = [{ id: 1, name: "A" }];
+    const rows = makeRecords(3, { studentId: 1, studentName: "A", score: 80 });
+    const coverage = computeCoverage(rows, roster, 3);
+    expect(coverage.eligibleStudents).toBe(1);
+    expect(coverage.noRecordStudents).toEqual([]);
+    expect(coverage.insufficientStudents).toEqual([]);
   });
 });
 
 describe("computeInsights", () => {
   it("handles an empty cohort without throwing", () => {
-    const insights = computeInsights([]);
+    const insights = computeInsights([], []);
     expect(insights).toMatchObject({
       studentCount: 0,
       recordCount: 0,
@@ -139,12 +194,19 @@ describe("computeInsights", () => {
       strongestTopic: null,
       weakestTopic: null,
       studentsNeedingAttention: [],
+      coverage: {
+        totalStudents: 0,
+        assessedStudents: 0,
+        eligibleStudents: 0,
+        noRecordStudents: [],
+        insufficientStudents: [],
+      },
     });
   });
 
   it("does not report the same topic as both strongest and weakest", () => {
-    const rows = records(5, { topicId: 1, topicName: "Algebra", score: 80 });
-    const insights = computeInsights(rows);
+    const rows = makeRecords(5, { topicId: 1, topicName: "Algebra", score: 80 });
+    const insights = computeInsights(rows, [{ id: 1, name: "Student 1" }]);
     expect(insights.strongestTopic?.topicName).toBe("Algebra");
     expect(insights.weakestTopic).toBeNull();
   });
