@@ -62,7 +62,8 @@ Put your audit notes in `AUDIT.md` at the repo root. We're interested in:
 - What you chose to leave (and why).
 - Anything you'd argue is the most important problem with the codebase.
 
-### 2. Add a feature: Cohort Insights (≈75 min)
+### 2. Add a feature: Cohort Insights (≈75 min) (started 20:30) 
+
 
 Add a new page at `/insights` showing **cohort-level analytics** across all students. There is no scaffolding for this page — you decide what it looks like and what it shows. Some ideas to anchor your thinking (you don't have to do all of them, and you can do something different):
 

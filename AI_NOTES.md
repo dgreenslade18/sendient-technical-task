@@ -10,11 +10,13 @@ Aim for ~10 minutes on this. Quality over length.
 
 Which AI tools did you reach for, and for what kinds of work? (e.g., Claude Code / Cursor / ChatGPT / Copilot, used for architecture sketching / code generation / test scaffolding / refactor proposals / domain research, etc.)
 
-Cursor - Opus 4.8
+Cursor - Opus 4.8 - used for sanity checking ideas, initial audit scan (audit only, no code change), review options for audit fixes and code changes. 
+Created mermaid diagram for how repo works
+ChatGPT - used to rewrite some of my content and text
 
 ---
 
-## 2. Where AI took you further than you could have gone alone
+## 2. Where AI took you further than you could have gone alone 
 
 This is the part we care most about. Pick **one or two specific things** in your submission that you would not have delivered (or would not have delivered at this quality) in the time available without AI.
 
