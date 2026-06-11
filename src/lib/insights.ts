@@ -29,6 +29,12 @@ export interface TopicStat {
   readonly recordCount: number;
 }
 
+export interface SubjectStat {
+  readonly subject: string;
+  readonly average: number;
+  readonly recordCount: number;
+}
+
 export interface ScoreDistribution {
   readonly low: number;
   readonly mid: number;
@@ -43,6 +49,7 @@ export interface CohortInsights {
   readonly distribution: ScoreDistribution;
   readonly strongestTopic: TopicStat | null;
   readonly weakestTopic: TopicStat | null;
+  readonly subjectAverages: SubjectStat[];
   readonly studentsNeedingAttention: StudentStat[];
 }
 
@@ -125,6 +132,28 @@ export function topicAverages(
     );
 }
 
+/**
+ * Average score per subject across all records in that subject, sorted
+ * alphabetically for a stable order.
+ */
+export function subjectAverages(
+  records: readonly InsightRecord[],
+): SubjectStat[] {
+  const bySubject = new Map<string, number[]>();
+  for (const record of records) {
+    const scores = bySubject.get(record.topicSubject) ?? [];
+    scores.push(record.score);
+    bySubject.set(record.topicSubject, scores);
+  }
+  return [...bySubject.entries()]
+    .map(([subject, scores]) => ({
+      subject,
+      average: mean(scores),
+      recordCount: scores.length,
+    }))
+    .sort((a, b) => a.subject.localeCompare(b.subject));
+}
+
 /** Distribution of students across the score bands, each student counted once. */
 export function scoreDistribution(
   records: readonly InsightRecord[],
@@ -170,6 +199,7 @@ export function computeInsights(
     // otherwise the same topic would be both strongest and weakest.
     weakestTopic:
       rankedTopics.length >= 2 ? rankedTopics[rankedTopics.length - 1] : null,
+    subjectAverages: subjectAverages(records),
     studentsNeedingAttention: studentsNeedingAttention(records),
   };
 }

@@ -5,6 +5,7 @@ import {
   computeInsights,
   type ScoreDistribution,
   type StudentStat,
+  type SubjectStat,
   type TopicStat,
 } from "@/lib/insights";
 
@@ -26,9 +27,7 @@ export default async function InsightsPage() {
         <Card>
           <CardTitle>Not enough data yet</CardTitle>
           <CardSubtitle>
-            There are no progress records to summarise. Run{" "}
-            <code>pnpm db:seed</code> to populate sample data, or record
-            progress for your students.
+            There are no progress records to summarise.
           </CardSubtitle>
         </Card>
       ) : (
@@ -36,11 +35,13 @@ export default async function InsightsPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <CohortAverageCard average={insights.cohortAverage} />
             <TopicCard
-              title="Strongest topic"
+              title="Highest scoring topic"
               topic={insights.strongestTopic}
             />
-            <TopicCard title="Weakest topic" topic={insights.weakestTopic} />
+            <TopicCard title="Lowest scoring topic" topic={insights.weakestTopic} />
           </div>
+
+          <SubjectSummaryCard subjects={insights.subjectAverages} />
 
           <DistributionCard distribution={insights.distribution} />
 
@@ -61,7 +62,7 @@ function CohortAverageCard({ average }: { readonly average: number | null }) {
         <>
           <p className="mt-2 text-3xl font-semibold">{average.toFixed(0)}</p>
           <CardSubtitle className="mt-1">
-            Mean of each student&rsquo;s average.
+            Average score across all students.
           </CardSubtitle>
         </>
       )}
@@ -98,6 +99,35 @@ function TopicCard({
   );
 }
 
+function SubjectSummaryCard({
+  subjects,
+}: {
+  readonly subjects: SubjectStat[];
+}) {
+  return (
+    <Card>
+      <CardTitle>Subject summary</CardTitle>
+      <CardSubtitle className="mt-1">Average score grouped by subject.</CardSubtitle>
+      <ul className="mt-3 divide-y divide-border text-sm">
+        {subjects.map((subject) => (
+          <li
+            key={subject.subject}
+            className="flex items-center justify-between gap-2 py-2"
+          >
+            <div>
+              <span className="font-medium">{subject.subject}</span>
+              <span className="ml-2 text-muted-foreground">
+                {subject.recordCount} records
+              </span>
+            </div>
+            <ScoreBadge score={subject.average} />
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function DistributionCard({
   distribution,
 }: {
@@ -128,7 +158,7 @@ function DistributionCard({
     <Card>
       <CardTitle>Score distribution</CardTitle>
       <CardSubtitle className="mt-1">
-        Students grouped by their average score.
+       Number of students in each score band.
       </CardSubtitle>
       <div className="mt-4 space-y-2">
         {bands.map((band) => {
@@ -168,8 +198,7 @@ function AttentionCard({
       <CardTitle>Students needing attention</CardTitle>
       {students.length === 0 ? (
         <CardSubtitle className="mt-2">
-          No students are currently flagged. Every student with enough records
-          is averaging 50 or above.
+         No students currently flagged. All students with enough records are averaging 50 or above.
         </CardSubtitle>
       ) : (
         <>

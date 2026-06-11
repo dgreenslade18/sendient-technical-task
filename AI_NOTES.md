@@ -12,7 +12,7 @@ Which AI tools did you reach for, and for what kinds of work? (e.g., Claude Code
 
 Cursor - Opus 4.8 - used for sanity checking ideas, initial audit scan (audit only, no code change), review options for audit fixes and code changes. 
 Created mermaid diagram for how repo works
-ChatGPT - used to rewrite some of my content and text
+ChatGPT - used to rewrite some of my content and text. I also used ChatGPT to sanity check the UI. I grabbed a screenshot, and gave it the scenario of being a teacher for the insights dashboard, to essentially sanity check what the expected output would look like for it to be as usable as it could be. 
 
 ---
 

@@ -4,6 +4,7 @@ import {
   computeInsights,
   scoreDistribution,
   studentsNeedingAttention,
+  subjectAverages,
   topicAverages,
   type InsightRecord,
 } from "@/lib/insights";
@@ -62,6 +63,25 @@ describe("topicAverages", () => {
     ];
     const result = topicAverages(rows, 5);
     expect(result.map((t) => t.topicName)).toEqual(["Geometry", "Algebra"]);
+  });
+});
+
+describe("subjectAverages", () => {
+  it("averages records per subject, sorted alphabetically", () => {
+    const rows = [
+      record({ topicId: 1, topicSubject: "Science", score: 80 }),
+      record({ topicId: 2, topicSubject: "Maths", score: 40 }),
+      record({ topicId: 3, topicSubject: "Maths", score: 60 }),
+    ];
+    const result = subjectAverages(rows);
+    expect(result).toEqual([
+      { subject: "Maths", average: 50, recordCount: 2 },
+      { subject: "Science", average: 80, recordCount: 1 },
+    ]);
+  });
+
+  it("is empty for no records", () => {
+    expect(subjectAverages([])).toEqual([]);
   });
 });
 
