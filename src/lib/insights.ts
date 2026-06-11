@@ -35,6 +35,30 @@ export interface SubjectStat {
   readonly recordCount: number;
 }
 
+/** A student on the active roster, used to surface those without enough data. */
+export interface StudentRef {
+  readonly id: number;
+  readonly name: string;
+}
+
+export interface UnassessedStudent {
+  readonly studentId: number;
+  readonly studentName: string;
+  readonly recordCount: number;
+}
+
+/**
+ * How much of the cohort the scored figures actually cover. Students without
+ * enough records are reported here rather than silently dropped.
+ */
+export interface Coverage {
+  readonly totalStudents: number;
+  readonly assessedStudents: number;
+  readonly eligibleStudents: number;
+  readonly noRecordStudents: UnassessedStudent[];
+  readonly insufficientStudents: UnassessedStudent[];
+}
+
 export interface ScoreDistribution {
   readonly low: number;
   readonly mid: number;
@@ -51,11 +75,14 @@ export interface CohortInsights {
   readonly weakestTopic: TopicStat | null;
   readonly subjectAverages: SubjectStat[];
   readonly studentsNeedingAttention: StudentStat[];
+  readonly coverage: Coverage;
 }
 
 // Minimum records before a figure is trustworthy enough to surface. Below
-// this we hold a topic back from strongest/weakest, and hold back the "needs
-// attention" flag, so a single stray score cannot mislead the teacher.
+// this we hold a topic back from strongest/weakest, and exclude a student from
+// the scored figures (average, distribution, attention) so a single stray
+// score cannot mislead the teacher. Excluded students are reported in coverage
+// rather than silently dropped.
 export const MIN_TOPIC_RECORDS = 5;
 export const MIN_STUDENT_RECORDS = 3;
 
@@ -86,14 +113,31 @@ export function studentAverages(
 }
 
 /**
- * Cohort average as the mean of each student's average, so a heavily-assessed
- * student does not dominate the headline figure. Returns null when no student
- * has any records.
+ * Students with enough records to be included in the scored figures. This is
+ * the single eligibility rule shared by the cohort average, the distribution
+ * and the attention list, so those figures never disagree about who counts.
  */
-export function cohortAverage(records: readonly InsightRecord[]): number | null {
-  const averages = studentAverages(records);
-  if (averages.length === 0) return null;
-  return mean(averages.map((student) => student.average));
+export function eligibleStudents(
+  records: readonly InsightRecord[],
+  minRecords: number = MIN_STUDENT_RECORDS,
+): StudentStat[] {
+  return studentAverages(records).filter(
+    (student) => student.recordCount >= minRecords,
+  );
+}
+
+/**
+ * Cohort average as the mean of each eligible student's average, so a
+ * heavily-assessed student does not dominate the headline figure. Returns null
+ * when no student has enough records.
+ */
+export function cohortAverage(
+  records: readonly InsightRecord[],
+  minRecords: number = MIN_STUDENT_RECORDS,
+): number | null {
+  const eligible = eligibleStudents(records, minRecords);
+  if (eligible.length === 0) return null;
+  return mean(eligible.map((student) => student.average));
 }
 
 /**
@@ -154,39 +198,91 @@ export function subjectAverages(
     .sort((a, b) => a.subject.localeCompare(b.subject));
 }
 
-/** Distribution of students across the score bands, each student counted once. */
+/**
+ * Distribution of eligible students across the score bands, each student
+ * counted once. Uses the shared eligibility rule so the totals reconcile with
+ * the attention list.
+ */
 export function scoreDistribution(
   records: readonly InsightRecord[],
+  minRecords: number = MIN_STUDENT_RECORDS,
 ): ScoreDistribution {
   const counts: Record<ScoreBand, number> = { low: 0, mid: 0, high: 0 };
-  const averages = studentAverages(records);
-  for (const student of averages) {
+  const eligible = eligibleStudents(records, minRecords);
+  for (const student of eligible) {
     counts[classifyScore(student.average)] += 1;
   }
-  return { ...counts, total: averages.length };
+  return { ...counts, total: eligible.length };
 }
 
 /**
- * Students whose own average sits in the low band, with enough records to be
- * confident it is not a one-off. Sorted lowest average first.
+ * Eligible students whose own average sits in the low band. Sorted lowest
+ * average first.
  */
 export function studentsNeedingAttention(
   records: readonly InsightRecord[],
   minRecords: number = MIN_STUDENT_RECORDS,
 ): StudentStat[] {
-  return studentAverages(records)
-    .filter(
-      (student) =>
-        student.recordCount >= minRecords &&
-        classifyScore(student.average) === "low",
-    )
+  return eligibleStudents(records, minRecords)
+    .filter((student) => classifyScore(student.average) === "low")
     .sort(
       (a, b) => a.average - b.average || a.studentName.localeCompare(b.studentName),
     );
 }
 
+/**
+ * How much of the roster the scored figures cover. Students with no records,
+ * and students with too few records to score, are listed separately so the
+ * teacher can see exactly who is excluded and why.
+ */
+export function computeCoverage(
+  records: readonly InsightRecord[],
+  roster: readonly StudentRef[],
+  minRecords: number = MIN_STUDENT_RECORDS,
+): Coverage {
+  const statById = new Map(
+    studentAverages(records).map((student) => [student.studentId, student]),
+  );
+  const noRecordStudents: UnassessedStudent[] = [];
+  const insufficientStudents: UnassessedStudent[] = [];
+  let eligibleCount = 0;
+
+  for (const student of roster) {
+    const recordCount = statById.get(student.id)?.recordCount ?? 0;
+    if (recordCount === 0) {
+      noRecordStudents.push({
+        studentId: student.id,
+        studentName: student.name,
+        recordCount: 0,
+      });
+    } else if (recordCount < minRecords) {
+      insufficientStudents.push({
+        studentId: student.id,
+        studentName: student.name,
+        recordCount,
+      });
+    } else {
+      eligibleCount += 1;
+    }
+  }
+
+  const byName = (a: UnassessedStudent, b: UnassessedStudent) =>
+    a.studentName.localeCompare(b.studentName);
+  noRecordStudents.sort(byName);
+  insufficientStudents.sort(byName);
+
+  return {
+    totalStudents: roster.length,
+    assessedStudents: statById.size,
+    eligibleStudents: eligibleCount,
+    noRecordStudents,
+    insufficientStudents,
+  };
+}
+
 export function computeInsights(
   records: readonly InsightRecord[],
+  roster: readonly StudentRef[] = [],
 ): CohortInsights {
   const rankedTopics = topicAverages(records);
   return {
@@ -201,5 +297,6 @@ export function computeInsights(
       rankedTopics.length >= 2 ? rankedTopics[rankedTopics.length - 1] : null,
     subjectAverages: subjectAverages(records),
     studentsNeedingAttention: studentsNeedingAttention(records),
+    coverage: computeCoverage(records, roster),
   };
 }

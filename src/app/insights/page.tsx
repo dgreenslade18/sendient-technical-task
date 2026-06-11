@@ -1,8 +1,11 @@
 import { Card, CardSubtitle, CardTitle } from "@/components/ui/Card";
 import { ScoreBadge } from "@/components/ScoreBadge";
 import { getInsightRecords } from "@/lib/actions/insights.actions";
+import { getStudents } from "@/lib/actions/server.actions";
 import {
   computeInsights,
+  MIN_STUDENT_RECORDS,
+  type Coverage,
   type ScoreDistribution,
   type StudentStat,
   type SubjectStat,
@@ -10,16 +13,23 @@ import {
 } from "@/lib/insights";
 
 export default async function InsightsPage() {
-  const records = await getInsightRecords();
-  const insights = computeInsights(records);
+  const [records, roster] = await Promise.all([
+    getInsightRecords(),
+    getStudents(),
+  ]);
+  const insights = computeInsights(
+    records,
+    roster.map((student) => ({ id: student.id, name: student.name })),
+  );
+  const { coverage } = insights;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Cohort insights</h1>
         <p className="mt-1 text-muted-foreground">
-          {insights.recordCount} records across {insights.studentCount}{" "}
-          students.
+          {insights.recordCount} progress records across{" "}
+          {coverage.assessedStudents} of {coverage.totalStudents} students.
         </p>
       </div>
 
@@ -32,6 +42,8 @@ export default async function InsightsPage() {
         </Card>
       ) : (
         <>
+          <CoverageCard coverage={coverage} />
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <CohortAverageCard average={insights.cohortAverage} />
             <TopicCard
@@ -52,6 +64,48 @@ export default async function InsightsPage() {
   );
 }
 
+function CoverageCard({ coverage }: { readonly coverage: Coverage }) {
+  const { noRecordStudents, insufficientStudents } = coverage;
+  if (noRecordStudents.length === 0 && insufficientStudents.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="border-warning/40 bg-warning/5">
+      <CardTitle>Coverage</CardTitle>
+      <CardSubtitle className="mt-1">
+        Scored figures below cover the {coverage.eligibleStudents} student
+        {coverage.eligibleStudents === 1 ? "" : "s"} with at least{" "}
+        {MIN_STUDENT_RECORDS} records.
+      </CardSubtitle>
+      <div className="mt-3 space-y-2 text-sm">
+        {noRecordStudents.length > 0 ? (
+          <p>
+            <span className="font-medium">
+              {noRecordStudents.length} not yet assessed:
+            </span>{" "}
+            <span className="text-muted-foreground">
+              {noRecordStudents.map((s) => s.studentName).join(", ")}
+            </span>
+          </p>
+        ) : null}
+        {insufficientStudents.length > 0 ? (
+          <p>
+            <span className="font-medium">
+              {insufficientStudents.length} with too few records to score:
+            </span>{" "}
+            <span className="text-muted-foreground">
+              {insufficientStudents
+                .map((s) => `${s.studentName} (${s.recordCount})`)
+                .join(", ")}
+            </span>
+          </p>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
 function CohortAverageCard({ average }: { readonly average: number | null }) {
   return (
     <Card>
@@ -62,7 +116,7 @@ function CohortAverageCard({ average }: { readonly average: number | null }) {
         <>
           <p className="mt-2 text-3xl font-semibold">{average.toFixed(0)}</p>
           <CardSubtitle className="mt-1">
-            Average score across all students.
+            Mean of each scored student&rsquo;s average.
           </CardSubtitle>
         </>
       )}
@@ -154,11 +208,22 @@ function DistributionCard({
     },
   ] as const;
 
+  if (distribution.total === 0) {
+    return (
+      <Card>
+        <CardTitle>Score distribution</CardTitle>
+        <CardSubtitle className="mt-2">
+          No students have enough records to score yet.
+        </CardSubtitle>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardTitle>Score distribution</CardTitle>
       <CardSubtitle className="mt-1">
-       Number of students in each score band.
+        Scored students in each band (at least {MIN_STUDENT_RECORDS} records).
       </CardSubtitle>
       <div className="mt-4 space-y-2">
         {bands.map((band) => {

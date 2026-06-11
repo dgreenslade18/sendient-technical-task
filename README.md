@@ -62,7 +62,7 @@ Put your audit notes in `AUDIT.md` at the repo root. We're interested in:
 - What you chose to leave (and why).
 - Anything you'd argue is the most important problem with the codebase.
 
-### 2. Add a feature: Cohort Insights (≈75 min) (started 20:30) 
+### 2. Add a feature: Cohort Insights (≈75 min) (started 20:25) (finished 21:35)
 
 
 Add a new page at `/insights` showing **cohort-level analytics** across all students. There is no scaffolding for this page — you decide what it looks like and what it shows. Some ideas to anchor your thinking (you don't have to do all of them, and you can do something different):
@@ -74,7 +74,7 @@ Add a new page at `/insights` showing **cohort-level analytics** across all stud
 
 The aim is to surface **something an actual teacher would find useful**, not just a render of an array. Think about empty states, small-sample edge cases, and what would mislead a teacher if you got it wrong.
 
-### 3. Tests (≈30 min)
+### 3. Tests (≈30 min) (Started 21:35)
 
 - At least **one regression test** that exercises a bug you fixed (it should fail before your fix and pass after).
 - Tests for any non-trivial logic in your new feature.
