@@ -10,7 +10,7 @@ Aim for ~10 minutes on this. Quality over length.
 
 Which AI tools did you reach for, and for what kinds of work? (e.g., Claude Code / Cursor / ChatGPT / Copilot, used for architecture sketching / code generation / test scaffolding / refactor proposals / domain research, etc.)
 
-> _Your answer here._
+Cursor - Opus 4.8
 
 ---
 
