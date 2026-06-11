@@ -26,7 +26,13 @@ For each one:
 - **Where AI helped** — the prompt or interaction shape, the suggestion, the option-generation, whatever it was.
 - **What you did to verify it** — read it carefully, ran tests, sanity-checked the edge case, rejected one of the options it gave, etc.
 
-> _Your answer here._
+# Audit and priority list of each issue 
+I used Opus to run me a full audit of the codebase and work with me to determine the impact of each issue that it identified. Rather than asking it to make any changes immediately, I treated this as a find and research task so that i could work out what I wanted to get done in the time frame vs what I'd have to defer. 
+Each suggestion was manually verified against the codebase and combined with similar issues where possible. I also got Opus to verify the things I had found during my own review. in serveral cases, I opted not to implement the suggestions due to time constraints or really low impact issues. AI increased the speed of the discovery process, but the prioritisation and the actual fix decisions were mine. 
+
+# Cohort insights feature 
+I had Opus first create me a full mermaid md and diagram to better understand the codebase and repo and how it was structured. I wrote up notes for the goal of the feature, and got Opus to explore 3 different ways of presenting the cohort insights. I took it a little step further and got it to understand whether the information it would dispaly would be useful to its end user (a teacher). I then also used Opus to generate the intial implementation for the calculations of the analytics. 
+I reviewed the generated code, validated and sanity checked the calculations against the seeded data (originally i questioned whether the figures were right), then ran the test suite. I then conducted a spearate review to sanity check the outputs. Opus wanted to change the seeded data so that we could see more calculations on the front end, as well as its advances for more cplex visualiations. I was concerned about the time we had remaining on this challenge to get us there, and decided instead to keep the feature focussed on the small and clear insights that a teacher could digest easily and quickly. I didnt want this to become a mini Power BI dashboard. 
 
 ---
 

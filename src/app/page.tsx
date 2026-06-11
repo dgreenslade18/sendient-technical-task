@@ -35,6 +35,14 @@ export default function HomePage() {
             </CardSubtitle>
           </Card>
         </Link>
+        <Link href="/insights/">
+          <Card className="hover:border-foreground/30">
+            <CardTitle>Insights</CardTitle>
+            <CardSubtitle>
+              View insights across the cohort.
+            </CardSubtitle>
+          </Card>
+        </Link>
       </div>
     </div>
   );
