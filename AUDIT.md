@@ -12,21 +12,21 @@ _(List the issues you noticed in the starter codebase. Bullet points are fine.)_
 2 - deleteStudent is a hard delete - losing all of the user data and progress records - needs soft delete! 
 3 - Internal admin helpers in server.actions can be used unauthenticated as its called by use server - exposed endpoints! 
 4 - Deleted students show in lists and averages as soft delete isnt filtered!
-5 - NaN possible for getAverage for student if you divide by 0
-6 - ScoreBadge issues - should be using classifyScore (which in itself is unused and could be removed if not being used) and has no upper band validation
+5 - NaN possible for getAverage for student if you divide by 0 (linting??).
+6 - ScoreBadge issues - should be using classifyScore (which in itself looks unused and could be removed if not being used) and has no upper band validation
 
-7 - Index is stored per second and not per day - recordedAt has second granulatrity 
+7 - Index is stored per second and not per day - recordedAt has second granularity. 
 
-8 - '- **TypeScript strict, no `any`.** Use `unknown` and narrow.' - and yet recordProgress accepts 'any'. Ties in with point 1. 
-9 - No env or env.local set up - db paths are hardcoded - could create and use env
-10 - server actions contains EVERYTHING - students topics, progress and admin. Readme states large files hurt cold-start up times. Should split out
+8 - README states '- **TypeScript strict, no `any`.** Use `unknown` and narrow.' - and yet recordProgress accepts 'any'. Ties in with point 1. 
+9 - No env or env.local set up - db paths are hardcoded - could create and use env instead.
+10 - Server actions file contains EVERYTHING - students topics, progress and admin. README states large files hurt cold-start up times. Should look to split this out and refactor.
 
-11 - No ESLint config for next lint - no linting available
+11 - No ESLint config for next lint.
 
-12 - 'text-blue-600' exists even though readme states to use semantic tokens
-13 - async actions but get, all, run are all synchronous  - could be a single sql. 
-14 - dark mode exists but never used
-15 - low accessibility score
+12 - 'text-blue-600' exists even though readme states to use semantic tokens.
+13 - We have async actions but 'get, all, run' are all synchronous actions. 
+14 - Dark mode seemingly exists but never used or toggled.
+15 - Low accessibility score on front end (for teachers this might be an issue).
 
 
 ## What I fixed and why
@@ -35,11 +35,11 @@ _(For each fix: where it was, what was wrong, and why this one was worth fixing 
 
 These fixes were all in server.actions - all issues were at the server action/data level.
 1 - Replacing recordProgress-any with a Zod schema. This now means out of range scores cannot be written to the database now and averages cant be corrupted by NaNs etc - also fixes 8.
-2 - Introduced a soft delete for detele student - keeps the row but adds a 'deletedAt' - audit trail, schema and progress preserved.
+2 - Introduced a soft delete for deleted student - keeps the row but adds a 'deletedAt' - audit trail, schema and progress preserved.
 3 - Removed _unsafeDeleteAllProgress server action - Was originally a exported 'use server' module, therefore, public endpoint which could have wiped the progress_records table. Was also redundant. Pretty hazardous to leave it in
 4 - Added an isNull filter to getStudents, getStudent, getTopics and getAverageForStudent and getProgressforStudent - means any soft deleted students and topics no longer appear in lists or count towards averages.
 
-5 - AverageScoreWidget.tsx - when there are no records, total/rows.length would be NaN. getAverageForStudent returns number|null so returns null when there are no records. AverageScoreWidget also has a empty awiting state now too 
+5 - AverageScoreWidget.tsx - when there are no records, total/rows.length would be NaN. getAverageForStudent returns number|null so returns null when there are no records. AverageScoreWidget also has a empty awaiting state now too 
 6 - ScoreBadge now uses classifyScore helper instead of duplicating the 70/50 thresholds and then uses the correct semantic tokens. Only 1 source of truth now, so cant drift between the 2 and corrects the badge theming. 
 
 
@@ -57,9 +57,8 @@ I also deferred anything which felt out of scope, for instance hooking up dark m
 Items I deferred: 
 
 7 - This would need a new migration, along with a day-truncation strategy. This could become a priority though if same day entries started to appear.
-10 - File size is 139 lines, although it contains everything and be cleaner to split it out, it doesnt quite require a huge refactor yet, but again, once this file starts to increase in size, this becomes an easy priority.  
-11 - This would be the one I'd pick to do as its a failry easy fix (just given time constraints one to push down to 'maybe') - having linting in would have stopped the 'any' issue appearing. 
-12 - Token change - correct for the readme, but makes no difference to the usability
+10 - File size is fairly manageable in size, although it contains everything (student, topic, progress etc) and would be cleaner to split it out, it doesn't quite require a huge refactor yet. Once this file starts to increase in size and the codebase grows, this becomes an easy priority.  
+11 - This would be the one I'd pick to do as its a failry easy fix (just given time constraints one to push down to 'maybe') - Having linting and stricter rule enforcement would have increased the liklihood of catchign the 'any' usage. 
 13 - If we were to migrate to a async driver, i'd pull this forward as a priority. 
 14 - Exists but never used - feature rather than a bug to fix - a 'nice to have'
 15 - would pull this forward as something to sort app wide if in scope.
@@ -69,4 +68,4 @@ Items I deferred:
 
 _(One paragraph. Pick the one that matters most.)_
 
-single biggest issue in this codebase is surrounding the lack of data integrity protection. The readme states that soft-deletes should be used and each table already has a 'deletedAt' included as a column, and yet the deleteStudent was a hard delete and removed rows, without then filtering out those deleted rows, so they were actively impacting the scoring system. This then has an impact on the trust of data and statistics being displayed on the front end, and the lose of tracability for the progress that is lost with the delete. We also have the issue that we could remove an entire table with an exposed endpoint which is a larger data integrity and security risk - exactly why i prioritised data integrity and validation related fixes first. 
+The single biggest issue in this codebase is surrounding the lack of data integrity protection. The README states that soft deletes should be used and each table already has a 'deletedAt' included as a column, and yet the deleteStudent performed a hard delete and permenantly removing rows, without then filtering out those deleted rows and progress data. Combined with an exposed endpoint capable of deleting all progress records, this creates both trust and security concerns around the underlying data. For me, this came down to trust. If assessment data can be corrupted, removed or reported incorrectly, then it doesn't really matter how polished the UI is because the outputs can't be relied on. That's why I prioritised the data integrity and validation fixes ahead of everything else.
