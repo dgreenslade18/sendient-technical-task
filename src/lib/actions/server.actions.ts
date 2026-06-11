@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { progressRecords, students, topics } from "@/lib/db/schema";
 
@@ -69,21 +70,28 @@ export async function createTopic(input: { name: string; subject: string }) {
 // Progress
 // ---------------------------------------------------------------------------
 
-// FIXME(PROG-42): scores outside 0..100 are accepted by this action.
-// A teacher logged a "120" once and it broke the student detail page badges.
-// We have not yet added validation here or a regression test guarding the range.
-export async function recordProgress(input: any) {
+const recordProgressSchema = z.object({
+  studentId: z.number().int().positive(),
+  topicId: z.number().int().positive(),
+  score: z.number().min(0).max(100),
+  notes: z.string().trim().max(2000).nullish(),
+});
+
+export type RecordProgressInput = z.input<typeof recordProgressSchema>;
+
+export async function recordProgress(input: unknown) {
+  const data = recordProgressSchema.parse(input);
   const [row] = db
     .insert(progressRecords)
     .values({
-      studentId: input.studentId,
-      topicId: input.topicId,
-      score: input.score,
-      notes: input.notes ?? null,
+      studentId: data.studentId,
+      topicId: data.topicId,
+      score: data.score,
+      notes: data.notes ?? null,
     })
     .returning()
     .all();
-  revalidatePath(`/students/${input.studentId}`);
+  revalidatePath(`/students/${data.studentId}`);
   return row;
 }
 
