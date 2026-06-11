@@ -125,12 +125,3 @@ export async function getAverageForStudent(studentId: number): Promise<number> {
   const total = rows.reduce((sum, r) => sum + r.score, 0);
   return total / rows.length;
 }
-
-// ---------------------------------------------------------------------------
-// Internal admin helpers
-// ---------------------------------------------------------------------------
-
-// Used by the seed/reset flow. Wipes the table.
-export async function _unsafeDeleteAllProgress(): Promise<void> {
-  db.delete(progressRecords).run();
-}
